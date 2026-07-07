@@ -298,27 +298,45 @@ impl VapoursynthDecoder {
     }
 
     /// Returns the VapourSynth output node, applying the registered modifier if any.
-    #[inline]
-    #[must_use]
-    pub fn get_output_node(&self) -> Node<'_> {
-        self.get_output(self.output_index, true)
+    pub(crate) fn get_output_node(&self) -> Node<'_> {
+        self.get_output(self.output_index, self.modify_node.as_ref())
             .expect("output node exists--validated during initialization")
     }
 
-    /// Returns the VapourSynth output node at the specified index, optionally modifying it with the registered callback.
+    /// Returns the index of the VapourSynth output node.
+    #[inline]
+    #[must_use]
+    pub fn get_output_index(&self) -> i32 {
+        self.output_index
+    }
+
+    /// Returns a reference to the registered modifier callback, if any.
+    #[inline]
+    #[must_use]
+    pub fn get_node_modifier(&self) -> Option<&ModifyNode> {
+        self.modify_node.as_ref()
+    }
+
+    /// Returns the VapourSynth output node at the specified index,
+    /// modifying it with the optional callback.
     ///
     /// # Errors
     ///
-    /// Returns [`DecoderError::VapoursynthInternalError`] if the core cannot be obtained or no output node exists. Propagates any error from the callback itself.
+    /// Returns [`DecoderError::VapoursynthInternalError`] if the core cannot be obtained
+    /// or no output node exists. Propagates any error from the callback itself.
     #[inline]
-    pub fn get_output(&self, index: i32, modify: bool) -> Result<Node<'_>, DecoderError> {
+    pub fn get_output(
+        &self,
+        index: i32,
+        modify_node: Option<&ModifyNode>,
+    ) -> Result<Node<'_>, DecoderError> {
         let output_node = match self.env.get_output(index) {
             Ok(output) => {
                 let (output_node, _) = output;
                 Ok(Some(output_node))
             }
             Err(vapoursynth::vsscript::Error::NoOutput) => {
-                if modify {
+                if modify_node.is_some() {
                     Ok(None)
                 } else {
                     // panic!("output node does not exist");
@@ -327,9 +345,7 @@ impl VapoursynthDecoder {
             }
             Err(_) => panic!("unexpected error when getting output node"),
         }?;
-        if let Some(modify_node) = self.modify_node.as_ref()
-            && modify
-        {
+        if let Some(modify_node) = modify_node {
             let core = self
                 .env
                 .get_core()
