@@ -298,30 +298,48 @@ impl VapoursynthDecoder {
     }
 
     /// Returns the VapourSynth output node, applying the registered modifier if any.
-    pub(crate) fn get_output_node(&self) -> Node<'_> {
-        let output_node = match self.env.get_output(self.output_index) {
+    #[inline]
+    #[must_use]
+    pub fn get_output_node(&self) -> Node<'_> {
+        self.get_output(self.output_index, true)
+            .expect("output node exists--validated during initialization")
+    }
+
+    /// Returns the VapourSynth output node at the specified index, optionally modifying it with the registered callback.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DecoderError::VapoursynthInternalError`] if the core cannot be obtained or no output node exists. Propagates any error from the callback itself.
+    #[inline]
+    pub fn get_output(&self, index: i32, modify: bool) -> Result<Node<'_>, DecoderError> {
+        let output_node = match self.env.get_output(index) {
             Ok(output) => {
                 let (output_node, _) = output;
-                Some(output_node)
+                Ok(Some(output_node))
             }
             Err(vapoursynth::vsscript::Error::NoOutput) => {
-                if self.modify_node.is_some() {
-                    None
+                if modify {
+                    Ok(None)
                 } else {
-                    panic!("output node does not exist");
+                    // panic!("output node does not exist");
+                    Err(map_vsscript_error(&vapoursynth::vsscript::Error::NoOutput))
                 }
             }
             Err(_) => panic!("unexpected error when getting output node"),
-        };
-        if let Some(modify_node) = self.modify_node.as_ref() {
+        }?;
+        if let Some(modify_node) = self.modify_node.as_ref()
+            && modify
+        {
             let core = self
                 .env
                 .get_core()
                 .expect("core exists--validated during initialization");
             modify_node(core, output_node)
-                .expect("modified node exists--validated during registration")
         } else {
-            output_node.expect("output node exists--validated during initialization")
+            output_node.map_or_else(
+                || Err(map_vsscript_error(&vapoursynth::vsscript::Error::NoOutput)),
+                Ok,
+            )
         }
     }
 
