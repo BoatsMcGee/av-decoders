@@ -32,7 +32,6 @@ pub struct Ffms2Decoder {
     pub video_details: VideoDetails,
     #[allow(missing_docs)]
     pub video_source: *mut FFMS_VideoSource,
-    #[expect(dead_code, reason = "Keep alive until drop")]
     index_handle: FfmsIndex,
 }
 
@@ -401,6 +400,13 @@ impl Ffms2Decoder {
         }
 
         Ok(frame)
+    }
+
+    /// Returns the track index of the video.
+    #[inline]
+    #[must_use]
+    pub fn get_track_index(&self) -> i32 {
+        self.index_handle.track
     }
 }
 
