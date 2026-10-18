@@ -6,6 +6,8 @@
 - feat: add backend-agnostic color enums (`ColorRange`, `ColorPrimaries`, `TransferCharacteristic`, `ColorSpace`, `ChromaLocation`) and HDR types (`MasteringDisplayMetadata`, `ContentLightLevel`)
 - feat: populate color and HDR metadata in the FFMS2 and FFmpeg backends
 - feat: add `VapoursynthDecoder::get_extended_video_details`, which decodes the first frame to read color frame properties
+- feat: add `Ffms2Decoder::with_index` to open a video against a caller-chosen index path, and `Ffms2Decoder::build_index` to build or validate an index with progress and cancellation support
+- feat: add `IndexProgress` and `IndexCancelled` callback types for the above
 
 ## Version 0.11.1
 
